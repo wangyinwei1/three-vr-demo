@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>灯笼</title>
+		<script src="js/three.js"></script>
+		<script src="js/OrbitControls.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/jquery.min.js" type="text/javascript" charset="utf-8"></script>
+		<style type="text/css">
+			* {
+				margin: 0;
+				padding: 0;
+			}
+		
+			#app {
+				background-color: #000FFF;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app">
+		
+		</div>
+		
+		<script type="text/javascript">
+			var scene = new THREE.Scene();
+			camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+			render = new THREE.WebGLRenderer({
+				antialias: true
+			});
+			render.setPixelRatio(window.devicePixelRatio);
+			render.setSize(window.innerWidth, window.innerHeight)
+			var app = document.getElementById("app");
+			app.appendChild(render.domElement);
+			
+			var spheres = [], colors = [];
+			/********************************************************/
+			// 计算过渡颜色
+			function rgbToHex(r, g, b)
+			{
+			    var hex = ((r<<16) | (g<<8) | b).toString(16);
+			    return "#" + new Array(Math.abs(hex.length-7)).join("0") + hex;
+			}
+			function hexToRgb(hex)
+			{
+			    var rgb = [];
+			    for(var i=1; i<7; i+=2){
+			        rgb.push(parseInt("0x" + hex.slice(i,i+2)));
+			    }
+			    return rgb;
+			}
+			function gradient (startColor,endColor,step)
+			{
+			    //将hex转换为rgb
+			    var sColor = hexToRgb(startColor), eColor = hexToRgb(endColor);
+			    //计算R\G\B每一步的差值
+			    var rStep = (eColor[0] - sColor[0]) / step;
+			        gStep = (eColor[1] - sColor[1]) / step;
+			        bStep = (eColor[2] - sColor[2]) / step;
+			    var gradientColorArr = [];
+			    for(var i=0;i<step;i++){
+			        //计算每一步的hex值
+			        gradientColorArr.push(rgbToHex(parseInt(rStep*i+sColor[0]),parseInt(gStep*i+sColor[1]),parseInt(bStep*i+sColor[2])));
+			    }
+			    return gradientColorArr;
+			}
+			colors = gradient('#ff0000', '#F6F836', 100);
+			
+			// 纹理方案
+			function loadTexture(url, num, flag) {
+				var textureLoader = new THREE.TextureLoader();
+				var texture = textureLoader.load(url); //加载纹理贴图，就是由图片组成一个纹理
+				// 设置阵列
+				texture.wrapS = THREE.RepeatWrapping;
+				texture.wrapT = THREE.RepeatWrapping;
+				// uv两个方向纹理重复数量
+				texture.repeat.set(num, num);
+				texture.needsUpdate = true; //设置true,以便在下次使用纹理时触发一次更新
+				if (flag) {
+					var textureBump = textureLoader.load('img/bg/bottom02.jpg');
+					var basicMaterial = new THREE.MeshBasicMaterial({
+						map: texture, //设置颜色贴图属性值
+						bumpMap: textureBump, //凹凸贴图
+						bumpScale: 100, //设置凹凸高度，默认值1
+					})
+				} else {
+					var basicMaterial = new THREE.MeshBasicMaterial({
+						map: texture, //设置颜色贴图属性值
+					})
+				}
+			
+				return basicMaterial; //由图片所早就的一个面材料
+			}
+			
+			// 创建场景贴图
+			scene.background = new THREE.CubeTextureLoader()
+			.setPath( 'img/' )
+				.load( [ 'w04.png', 'w05.png', 'w06.png', 'w02.png', 'w01.png', 'w03.png' ] );
+			
+			// 总灯笼对象集合
+			var objectTotal = new THREE.Group();
+			// 灯笼
+			function createDeng(src1,src2){
+				var ary = [
+					loadTexture(src1, 1, false),
+					loadTexture(src2, 1, false),
+					loadTexture(src2, 1, false),
+				]
+				var geometry = new THREE.CylinderGeometry(10, 10, 20, 6);
+				var material = new THREE.MultiMaterial(ary)
+				var meshs = new THREE.Mesh(geometry, material);
+				// meshs.position.y = -100;
+				// 创建物体的边框线
+				var geoEdges = new THREE.EdgesGeometry(geometry, 1);
+				var edgesMtl = new THREE.LineBasicMaterial({
+					color: "#A55F21"
+				});
+				var geoLine = new THREE.LineSegments(geoEdges, edgesMtl);
+				meshs.add(geoLine);
+				return meshs;
+			}
+			var denglong1 = createDeng('img/deng/newYear01.jpg','img/deng/di.jpg');
+			var denglong2 = createDeng('img/deng/newYear05.jpg','img/deng/newYear02.jpg');
+			var denglong3 = createDeng('img/deng/newYear03.jpg','img/deng/di.jpg');
+			var denglong4 = createDeng('img/deng/newYear04.jpg','img/deng/di.jpg');
+			
+			// 循环创建物体
+			for (var i = 0; i <= 99; i++) {
+				if(i >= 0 && i < 25){
+					var deng = denglong1.clone();
+				} else if(i >= 25 && i < 50){
+					var deng = denglong2.clone();
+				} else if(i >= 50 && i < 75){
+					var deng = denglong3.clone();
+				} else if(i >= 75 && i <= 99){
+					var deng = denglong4.clone();
+				}
+				
+				var k1 = Math.random() - 0.5;
+				var k2 = Math.random() - 0.5;
+				var k3 = Math.random() - 0.5;
+				// 设置精灵模型位置，在整个空间上上随机分布
+				deng.position.set(800 * k1, 800 * k3, 800 * k2);
+			
+				objectTotal.add(deng);
+			}
+			objectTotal.position.y = -100;
+			scene.add(objectTotal);
+			
+			// 雨滴特效
+			var textureCube = new THREE.CubeTextureLoader()
+				.setPath('img/')
+				.load([ 'w04.png', 'w05.png', 'w06.png', 'w02.png', 'w01.png', 'w03.png' ]);
+			textureCube.mapping = THREE.CubeRefractionMapping;
+			
+			var geometry = new THREE.SphereBufferGeometry( 20, 32, 16 );
+			var material = new THREE.MeshBasicMaterial( { color: 0xffffff, envMap: textureCube, refractionRatio: 0.95 } );
+						
+			for ( var i = 0; i < 300; i ++ ) {				
+				var mesh = new THREE.Mesh( geometry, material );
+				mesh.position.x = Math.random() * 10000 - 5000;
+				mesh.position.y = Math.random() * 10000 - 5000;
+				mesh.position.z = Math.random() * 10000 - 5000;
+				mesh.scale.x = mesh.scale.y = mesh.scale.z = Math.random() * 3 + 1;
+				scene.add( mesh );
+						
+				spheres.push( mesh );					
+			}
+			
+			// 创建文字
+			var loader = new THREE.FontLoader(), Textgeometry, index = 0;
+			loader.load( './Json/Microsoft YaHei_Regular.json', function ( font ) {
+				Textgeometry = new THREE.TextGeometry( '2021到了，过年了!', {
+					font: font,
+					size: 100,
+					height: 5,
+					curveSegments: 12,
+					bevelEnabled: true,
+					bevelThickness: 10,
+					bevelSize: 1,
+					bevelSegments: 5
+				} );
+			
+				changeColor(0);
+				animate();
+			} );
+			function changeColor(index){
+				var material = new THREE.MeshBasicMaterial( {
+					color: colors[index] ,
+					// vertexColors: THREE.VertexColors, //以顶点颜色为准
+				} );
+				var Textmesh = new THREE.Mesh( Textgeometry, material );
+				Textmesh.scale.set(0.5,0.5,0.5);
+				// Textmesh.rotation.x = 0.5;
+				Textmesh.rotation.y = 1;
+				Textmesh.rotation.z = -0.4;
+				Textmesh.rotation.x = 0.5;
+				Textmesh.translateY(400);
+				Textmesh.translateZ(-600);
+				Textmesh.translateX(-200);
+				scene.add(Textmesh);
+			}
+		
+			// 鼠标控件
+			var controls = new THREE.OrbitControls(camera, render.domElement); //创建控件对象
+			// 坐标轴
+			// var axisHelper = new THREE.AxisHelper(300);
+			// scene.add(axisHelper)
+			
+			camera.position.set(200, 0, 0)
+			// 键盘
+			$(document).keydown(function(event) {
+				// w:87  a:65 s:83  d:68
+				if (event.keyCode == 87) {
+					camera.position.y += 10;
+				} else if( event.keyCode == 83 ){
+					camera.position.y -= 10;
+				} else if( event.keyCode == 65 ){
+					camera.position.z += 10;
+				} else if( event.keyCode == 68 ){
+					camera.position.z -= 10;
+				}
+			});
+		
+			/********************************************************/
+			nums = 1;
+			function animate() {
+				// meshs.rotation.y += 0.01
+				objectTotal.children.forEach(sprite => {
+					sprite.rotation.y += 0.02;
+					sprite.position.y += 3;
+					if (sprite.position.y > 800) {
+						// 如果雨滴落到地面，重置y，从新下落
+						sprite.position.y = -90;
+					}
+				})
+				
+				var timer = 0.0001 * Date.now();
+				for ( var i = 0, il = spheres.length; i < il; i ++ ) {
+					var sphere = spheres[ i ];	
+					sphere.position.x = 5000 * Math.cos( timer + i );
+					sphere.position.y = 5000 * Math.sin( timer + i * 1.1 );
+				}
+				
+				controls.update();
+				render.render(scene, camera);
+				window.requestAnimationFrame(animate);
+			}
+			
+			// 窗口大小发生改变
+			window.onresize=function(){ 
+				render.setSize(window.innerWidth, window.innerHeight);
+				// 重置相机投影的相关参数
+				camera.aspect = window.innerWidth/window.innerHeight;
+				// 如果相机的一些属性发生了变化，需要执行updateProjectionMatrix ()方法更新相机的投影矩阵
+				camera.updateProjectionMatrix ();
+			}
+		</script>
+	</body>
+</html>
